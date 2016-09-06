@@ -2,8 +2,9 @@ var config = require("./config");
 var path = require('path');
 var fs = require('fs');
 
-function route(handle, pathName, data, response) {
-  switch(pathName){
+function route(handle, urlObj, data, response) {
+  var pathName = urlObj.pathname;
+  switch (pathName){
   	case "/callapi":
   		callApi(handle, data, response);
   	 break;
@@ -15,7 +16,7 @@ function route(handle, pathName, data, response) {
       // response.write("Invalid Call");
       // response.end();
       if (mimeTypesReg.test(pathName) || pathName === '/') {
-        loadFile(pathName, response);
+        loadFile(urlObj, response);
       } else {
         responseError(response, pathName + ' is not found.');
       }
@@ -88,7 +89,8 @@ var mimeTypes = {
      "txt": "text/plain",
 };
 
-function loadFile(pathName, response){
+function loadFile(urlObj, response){
+  var pathName = urlObj.pathname;
   if(pathName == "/"){
     pathName = "/index.html"
   }
@@ -117,23 +119,30 @@ function loadFile(pathName, response){
           response.end(err.message);
         } else {
           var content_type;
-          switch(suffix){
-          case 'css':
-          case 'mp3':
-          case 'ogg':
-          case 'js':
-          case 'svg':
-          case 'ico':
-            content_type = mimeTypes[suffix];
-            break;
-          default:
-            content_type = 'text/html';
-            break;
+          switch (suffix) {
+            case 'css':
+            case 'mp3':
+            case 'ogg':
+            case 'svg':
+            case 'ico':
+              content_type = mimeTypes[suffix];
+              break;
+            case 'js':
+              content_type = mimeTypes[suffix];
+              break;
+            default:
+              content_type = 'text/html';
+              break;
           }
           response.writeHead(200, {
             'Content-Type': content_type
           });
-          response.write(file, "binary");
+          if (suffix === 'js' && urlObj.query && 'callback' in urlObj.query) {
+            var json = {name: 'test'};
+            response.write(urlObj.query.callback + '(' + JSON.stringify(json) + ')', "binary");
+          } else {
+            response.write(file, "binary");
+          }
           response.end();
         }
       });
